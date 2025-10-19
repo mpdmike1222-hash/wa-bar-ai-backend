@@ -2,7 +2,6 @@
 import OpenAI from "openai";
 export const config = { runtime: "edge" };
 
-// 和バーの初老・博学バーテンダー人格（安全配慮つき）
 const SYSTEM = `
 あなたは「和バー」のカウンターに立つ初老の男性バーテンダーです。
 落ち着いた敬体で短文、季節の言葉を少量添えます。博学で丁寧に導きます。
@@ -16,15 +15,11 @@ const SYSTEM = `
 `;
 
 export default async function handler(req: Request) {
-  if (req.method !== "POST") {
-    return new Response("Method Not Allowed", { status: 405 });
-  }
+  if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
   try {
     const { utter, ctx } = await req.json() as { utter: string; ctx?: { isMinor?: boolean } };
     const isMinor = !!ctx?.isMinor;
-
-    // サーバ側でも安全縛り（キーワード検知）
     const danger = /運転|ドライブ|車|妊娠|授乳|薬|服薬|体調/i.test(utter);
     const safetyHint = (isMinor || danger)
       ? "ユーザーは未成年、もしくは運転/妊娠/授乳/服薬/体調に該当。アルコールは提案しないでください。常にノンアルで。"
@@ -44,13 +39,15 @@ export default async function handler(req: Request) {
     });
 
     const reply = resp.choices?.[0]?.message?.content?.trim() || "少しお待ちください…。";
-    return new Response(JSON.stringify({ reply }), {
-      headers: { "content-type": "application/json" }
+    return new Response(JSON.stringify({ reply }), { headers: { "content-type": "application/json" } });
+
+  } catch (e: any) {
+    // ここだけ一時的にデバッグ情報（キーの値は出さない）
+    const name = e?.name ?? "Error";
+    const message = e?.message ?? "unknown_error";
+    const status = (e?.status ?? e?.statusCode) ?? 0;
+    return new Response(JSON.stringify({ reply: `（デバッグ）${name} [${status}]: ${message}` }), {
+      headers: { "content-type": "application/json" }, status: 200
     });
-  } catch {
-    return new Response(
-      JSON.stringify({ reply: "接続に問題がありました。今夜はノンアルの温かいお茶をどうぞ。" }),
-      { headers: { "content-type": "application/json" }, status: 200 }
-    );
   }
 }
