@@ -1,0 +1,8 @@
+{
+  "name": "wa-bar-ai-backend",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "openai": "^4.57.0"
+  }
+}
